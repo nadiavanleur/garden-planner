@@ -31,9 +31,18 @@
       position: relative;
       width: 100%;
       height: 600px;
-      background: #d2e8d2;
+      background: repeating-linear-gradient(to right,
+          #d2e8d2,
+          #d2e8d2 1px,
+          #c8e0c8 1px,
+          #c8e0c8 calc(10 * var(--cm))),
+        repeating-linear-gradient(to bottom,
+          #d2e8d2,
+          #d2e8d2 1px,
+          #c8e0c8 1px,
+          #c8e0c8 calc(10 * var(--cm)));
       border: 2px solid #444;
-      overflow: hidden;
+      overflow: auto;
     }
 
     .bed {
@@ -53,6 +62,13 @@
       font-size: 0.75rem;
       text-align: center;
       user-select: none;
+      display: none;
+      /* Hide by default */
+    }
+
+    .bed:hover .drag-handle {
+      display: block;
+      /* Show on hover */
     }
 
     .size-label {
@@ -64,20 +80,22 @@
       padding: 2px 4px;
       border-radius: 3px;
       pointer-events: none;
+      display: none;
+    }
+
+    .bed:hover .size-label {
+      display: block;
     }
 
     .plant {
+      text-align: center;
       position: absolute;
-      width: 32px;
-      height: 32px;
+      width: calc(10 * var(--cm));
+      /* 10cm width */
+      height: calc(10 * var(--cm));
+      /* 10cm height */
       cursor: grab;
       transform: translate(-50%, -50%);
-    }
-
-    .plant img {
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
     }
 
     .delete-btn {
@@ -100,6 +118,38 @@
     .plant:hover .delete-btn {
       display: block;
     }
+
+    .duplicate-btn {
+      position: absolute;
+      top: 2px;
+      right: 24px;
+      background: rgba(80, 80, 255, 0.8);
+      border: none;
+      color: white;
+      font-size: 0.8rem;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: none;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .bed:hover .duplicate-btn {
+      display: block;
+    }
+
+    .plant span {
+      display: block;
+      font-size: 2rem;
+      text-align: center;
+    }
+
+    .plant .plant-name {
+      font-size: 1rem;
+      color: #555;
+      text-align: center;
+    }
   </style>
 </head>
 
@@ -115,23 +165,67 @@
     <button onclick="selectPlant('Tomato')">Tomato</button>
     <button onclick="selectPlant('Parsley')">Parsley</button>
     <button onclick="selectPlant('Chamomile')">Chamomile</button>
+    <label>
+      <span>Pixels per 1cm:</span>
+      <input type="number" id="pixelsPerCm" value="5" min="1" onchange="updatePixelsPerCm()" />
+    </label>
   </div>
 
   <div class="garden" id="garden"></div>
 
   <script>
+    const plantEmojis = {
+      Lavender: "💜",
+      Thyme: "🌿",
+      Sage: "🍃",
+      Tomato: "🍅",
+      Parsley: "🥬",
+      Chamomile: "🌼",
+    };
+
     const garden = document.getElementById("garden");
     let selectedPlant = null;
-    const cm = 5; // 1 cm = 5 pixels
 
-    const plantImages = {
-      Lavender: "https://img.icons8.com/emoji/48/lavender.png",
-      Thyme: "https://img.icons8.com/emoji/48/herb-emoji.png",
-      Sage: "https://img.icons8.com/emoji/48/leaf-fluttering-in-wind.png",
-      Tomato: "https://img.icons8.com/emoji/48/tomato.png",
-      Parsley: "https://img.icons8.com/emoji/48/leafy-green.png",
-      Chamomile: "https://img.icons8.com/emoji/48/blossom.png"
-    };
+    function getPixelsPerCm() {
+      const input = document.getElementById("pixelsPerCm");
+      return Math.max(1, parseInt(input.value) || 5); // Ensure a valid value
+    }
+
+    function updatePixelsPerCm() {
+      const input = document.getElementById("pixelsPerCm");
+      const oldPixelsPerCm = parseFloat(input.dataset.oldValue) || getPixelsPerCm();
+      const newPixelsPerCm = getPixelsPerCm();
+
+      // Update the CSS variable for the grid size
+      document.documentElement.style.setProperty("--cm", `${newPixelsPerCm}px`);
+
+      // Scale all beds and plants based on the new pixelsPerCm value
+      const scaleFactor = newPixelsPerCm / oldPixelsPerCm;
+
+      document.querySelectorAll(".bed").forEach((bed) => {
+        const width = parseFloat(bed.style.width) * scaleFactor;
+        const height = parseFloat(bed.style.height) * scaleFactor;
+        const left = parseFloat(bed.style.left) * scaleFactor;
+        const top = parseFloat(bed.style.top) * scaleFactor;
+
+        bed.style.width = `${width}px`;
+        bed.style.height = `${height}px`;
+        bed.style.left = `${left}px`;
+        bed.style.top = `${top}px`;
+
+        // Update plants inside the bed
+        bed.querySelectorAll(".plant").forEach((plant) => {
+          const plantLeft = parseFloat(plant.style.left) * scaleFactor;
+          const plantTop = parseFloat(plant.style.top) * scaleFactor;
+
+          plant.style.left = `${plantLeft}px`;
+          plant.style.top = `${plantTop}px`;
+        });
+      });
+
+      input.dataset.oldValue = newPixelsPerCm; // Store the new value for future scaling
+      updateGardenSize(); // Recalculate garden size
+    }
 
     function selectPlant(name) {
       selectedPlant = name;
@@ -140,13 +234,65 @@
       if (button) button.style.background = '#cfc';
     }
 
-    function addBed() {
+    function updateGardenSize() {
+      const beds = document.querySelectorAll(".bed");
+      let maxRight = 0;
+      let maxBottom = 0;
+
+      beds.forEach((bed) => {
+        const rect = bed.getBoundingClientRect();
+        const gardenRect = garden.getBoundingClientRect();
+        const right = rect.left - gardenRect.left + bed.offsetWidth;
+        const bottom = rect.top - gardenRect.top + bed.offsetHeight;
+
+        if (right > maxRight) maxRight = right;
+        if (bottom > maxBottom) maxBottom = bottom;
+      });
+
+      garden.style.minWidth = `${maxRight}px`;
+      garden.style.minHeight = `${maxBottom}px`;
+    }
+
+    function addBed(existingBed = null) {
+      const borderWidth = 8; // Total border width (4px on each side)
+
       const bed = document.createElement("div");
       bed.className = "bed";
-      bed.style.width = `${cm * 60}px`; // 60 cm
-      bed.style.height = `${cm * 60}px`; // 60 cm
-      bed.style.left = "50px";
-      bed.style.top = "50px";
+
+      let left, top, totalWidth, totalHeight;
+
+      if (existingBed) {
+        // Duplicate properties from the existing bed
+        totalWidth = parseInt(existingBed.style.width) + borderWidth;
+        totalHeight = parseInt(existingBed.style.height) + borderWidth;
+        totalWidth = snapToGrid(totalWidth); // Snap total width
+        totalHeight = snapToGrid(totalHeight); // Snap total height
+        bed.style.width = `${totalWidth - borderWidth}px`; // Subtract border width
+        bed.style.height = `${totalHeight - borderWidth}px`; // Subtract border width
+        left = parseInt(existingBed.style.left) + 20; // Initial offset position
+        top = parseInt(existingBed.style.top) + 20;
+      } else {
+        totalWidth = snapToGrid(getPixelsPerCm() * 60 + borderWidth); // Include border in size
+        totalHeight = snapToGrid(getPixelsPerCm() * 60 + borderWidth); // Include border in size
+        bed.style.width = `${totalWidth - borderWidth}px`; // Subtract border width
+        bed.style.height = `${totalHeight - borderWidth}px`; // Subtract border width
+        left = 50;
+        top = 50;
+
+        // Temporarily append the bed to check for overlaps
+        garden.appendChild(bed);
+        while (checkOverlap(bed, left, top)) {
+          left += 20; // Increment position to avoid overlap
+          if (left + totalWidth > garden.offsetWidth) { // Wrap to the next row if out of bounds
+            left = 50;
+            top += 20;
+          }
+        }
+        garden.removeChild(bed); // Remove the temporary bed
+      }
+
+      bed.style.left = `${left}px`;
+      bed.style.top = `${top}px`;
 
       const handle = document.createElement("div");
       handle.className = "drag-handle";
@@ -154,11 +300,20 @@
 
       const label = document.createElement("div");
       label.className = "size-label";
+      label.textContent = `${Math.round(totalWidth / getPixelsPerCm())} x ${Math.round(totalHeight / getPixelsPerCm())} cm`;
 
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "delete-btn";
       deleteBtn.textContent = "🗑️";
-      deleteBtn.onclick = () => bed.remove();
+      deleteBtn.onclick = () => {
+        bed.remove();
+        updateGardenSize(); // Update garden size after removing a bed
+      };
+
+      const duplicateBtn = document.createElement("button");
+      duplicateBtn.className = "duplicate-btn";
+      duplicateBtn.textContent = "📋";
+      duplicateBtn.onclick = () => addBed(bed);
 
       let isDragging = false;
       let dragOffsetX = 0;
@@ -175,8 +330,13 @@
 
       document.addEventListener("mousemove", (e) => {
         if (isDragging) {
-          bed.style.left = `${snapToGrid(e.pageX - garden.offsetLeft - dragOffsetX)}px`;
-          bed.style.top = `${snapToGrid(e.pageY - garden.offsetTop - dragOffsetY)}px`;
+          const newLeft = Math.max(0, snapToGrid(e.pageX - garden.offsetLeft - dragOffsetX)); // Prevent going off the left
+          const newTop = Math.max(0, snapToGrid(e.pageY - garden.offsetTop - dragOffsetY)); // Prevent going off the top
+          if (!checkOverlap(bed, newLeft, newTop)) {
+            bed.style.left = `${newLeft}px`;
+            bed.style.top = `${newTop}px`;
+            updateGardenSize(); // Update garden size after moving a bed
+          }
         }
       });
 
@@ -191,18 +351,85 @@
       });
 
       // Resize snap & label
-      new ResizeObserver(() => {
-        const w = parseInt(bed.style.width);
-        const h = parseInt(bed.style.height);
-        bed.style.width = `${snapToGrid(w)}px`;
-        bed.style.height = `${snapToGrid(h)}px`;
-        label.textContent = `${Math.round(w / cm)} x ${Math.round(h / cm)} cm`;
-      }).observe(bed);
+      let isResizing = false;
 
+      const resizeObserver = new ResizeObserver(() => {
+        if (!isResizing) return; // Only snap during resizing
+        let w = parseInt(bed.style.width) + borderWidth;
+        let h = parseInt(bed.style.height) + borderWidth;
+        w = snapToGrid(w); // Ensure total width snaps correctly
+        h = snapToGrid(h); // Ensure total height snaps correctly
+        if (!checkOverlap(bed, parseInt(bed.style.left), parseInt(bed.style.top), w, h)) {
+          bed.style.width = `${w - borderWidth}px`; // Subtract border width
+          bed.style.height = `${h - borderWidth}px`; // Subtract border width
+          label.textContent = `${Math.round(w / getPixelsPerCm())} x ${Math.round(h / getPixelsPerCm())} cm`;
+          updateGardenSize(); // Update garden size after resizing
+        }
+      });
+
+      bed.addEventListener("mousedown", (e) => {
+        if (e.target === bed) isResizing = true;
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isResizing) {
+          let w = parseInt(bed.style.width) + borderWidth;
+          let h = parseInt(bed.style.height) + borderWidth;
+          w = snapToGrid(w); // Final snap after resizing
+          h = snapToGrid(h); // Final snap after resizing
+          if (!checkOverlap(bed, parseInt(bed.style.left), parseInt(bed.style.top), w, h)) {
+            bed.style.width = `${w - borderWidth}px`; // Subtract border width
+            bed.style.height = `${h - borderWidth}px`; // Subtract border width
+            label.textContent = `${Math.round(w / getPixelsPerCm())} x ${Math.round(h / getPixelsPerCm())} cm`;
+            updateGardenSize(); // Update garden size after resizing
+          }
+          isResizing = false;
+        }
+      });
+
+      resizeObserver.observe(bed);
+
+      // Append the bed after finding a valid position
+      garden.appendChild(bed);
       bed.appendChild(deleteBtn);
+      bed.appendChild(duplicateBtn);
       bed.appendChild(handle);
       bed.appendChild(label);
-      garden.appendChild(bed);
+
+      updateGardenSize(); // Ensure garden size is updated after adding a bed
+    }
+
+    function checkOverlap(currentBed, newLeft, newTop, newWidth = null, newHeight = null) {
+      const beds = document.querySelectorAll(".bed");
+      const currentRect = {
+        left: newLeft,
+        top: newTop,
+        right: newLeft + (newWidth || currentBed.offsetWidth),
+        bottom: newTop + (newHeight || currentBed.offsetHeight),
+      };
+
+      for (const bed of beds) {
+        if (bed === currentBed) continue;
+        const rect = bed.getBoundingClientRect();
+        const gardenRect = garden.getBoundingClientRect();
+        const bedRect = {
+          left: rect.left - gardenRect.left,
+          top: rect.top - gardenRect.top,
+          right: rect.left - gardenRect.left + bed.offsetWidth,
+          bottom: rect.top - gardenRect.top + bed.offsetHeight,
+        };
+
+        if (
+          currentRect.left < bedRect.right &&
+          currentRect.right > bedRect.left &&
+          currentRect.top < bedRect.bottom &&
+          currentRect.bottom > bedRect.top &&
+          !(currentRect.right === bedRect.left || currentRect.left === bedRect.right || currentRect.bottom === bedRect.top || currentRect.top === bedRect.bottom)
+        ) {
+          return true; // Overlap detected
+        }
+      }
+      return false; // No overlap
     }
 
     function createPlantElement(name, x, y) {
@@ -211,11 +438,15 @@
       div.style.left = `${x}px`;
       div.style.top = `${y}px`;
 
-      const img = document.createElement("img");
-      img.src = plantImages[name] || "https://img.icons8.com/emoji/48/seedling.png";
-      img.alt = name;
-      img.title = name;
-      div.appendChild(img);
+      const emoji = document.createElement("span");
+      emoji.textContent = plantEmojis[name] || "🌱";
+      emoji.title = name;
+      div.appendChild(emoji);
+
+      const plantName = document.createElement("div");
+      plantName.className = "plant-name";
+      plantName.textContent = name;
+      div.appendChild(plantName);
 
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "delete-btn";
@@ -249,7 +480,8 @@
     }
 
     function snapToGrid(val) {
-      return Math.round(val / (cm * 10)) * (cm * 10);
+      const pixelsPer10Cm = getPixelsPerCm() * 10; // 10cm grid
+      return Math.round(val / pixelsPer10Cm) * pixelsPer10Cm;
     }
   </script>
 
