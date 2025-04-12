@@ -507,6 +507,173 @@
       const pixelsPer10Cm = getPixelsPerCm() * 10; // 10cm grid
       return Math.round(val / pixelsPer10Cm) * pixelsPer10Cm;
     }
+
+    function saveData() {
+      const data = {
+        beds: [],
+      };
+
+      document.querySelectorAll(".bed").forEach((bed) => {
+        const bedData = {
+          left: parseFloat(bed.style.left),
+          top: parseFloat(bed.style.top),
+          width: parseFloat(bed.style.width),
+          height: parseFloat(bed.style.height),
+          plants: [],
+        };
+
+        bed.querySelectorAll(".plant").forEach((plant) => {
+          const plantData = {
+            name: plant.querySelector(".plant-name").textContent,
+            left: parseFloat(plant.style.left),
+            top: parseFloat(plant.style.top),
+          };
+          bedData.plants.push(plantData);
+        });
+
+        data.beds.push(bedData);
+      });
+
+      localStorage.setItem("gardenData", JSON.stringify(data));
+      alert("Garden data saved!");
+    }
+
+    function loadData() {
+      const data = JSON.parse(localStorage.getItem("gardenData"));
+      if (!data) return;
+
+      data.beds.forEach((bedData) => {
+        const bed = document.createElement("div");
+        bed.className = "bed";
+        bed.style.left = `${bedData.left}px`;
+        bed.style.top = `${bedData.top}px`;
+        bed.style.width = `${bedData.width}px`;
+        bed.style.height = `${bedData.height}px`;
+
+        bedData.plants.forEach((plantData) => {
+          const plant = createPlantElement(plantData.name, plantData.left, plantData.top);
+          bed.appendChild(plant);
+        });
+
+        garden.appendChild(bed);
+        addBedEventListeners(bed); // Reapply event listeners
+      });
+    }
+
+    function addBedEventListeners(bed) {
+      const handle = document.createElement("div");
+      handle.className = "drag-handle";
+      handle.textContent = "🌱 Drag Me";
+
+      const label = document.createElement("div");
+      label.className = "size-label";
+      label.textContent = `${Math.round(totalWidth / getPixelsPerCm())} x ${Math.round(totalHeight / getPixelsPerCm())} cm`;
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "delete-btn";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.onclick = () => {
+        bed.remove();
+        updateGardenSize(); // Update garden size after removing a bed
+      };
+
+      const duplicateBtn = document.createElement("button");
+      duplicateBtn.className = "duplicate-btn";
+      duplicateBtn.textContent = "📋";
+      duplicateBtn.onclick = () => addBed(bed);
+
+      let isDragging = false;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
+      handle.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        dragOffsetX = e.offsetX;
+        dragOffsetY = e.offsetY;
+        e.stopPropagation();
+      });
+
+      document.addEventListener("mouseup", () => isDragging = false);
+
+      document.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          const newLeft = Math.max(0, snapToGrid(e.pageX - garden.offsetLeft - dragOffsetX)); // Prevent going off the left
+          const newTop = Math.max(0, snapToGrid(e.pageY - garden.offsetTop - dragOffsetY)); // Prevent going off the top
+          if (!checkOverlap(bed, newLeft, newTop)) {
+            bed.style.left = `${newLeft}px`;
+            bed.style.top = `${newTop}px`;
+            updateGardenSize(); // Update garden size after moving a bed
+          }
+        }
+      });
+
+      // Click to add plant
+      bed.addEventListener("click", (e) => {
+        if (!selectedPlant || e.target.closest(".plant") || e.target.classList.contains("drag-handle")) return;
+        const rect = bed.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const plant = createPlantElement(selectedPlant, x, y);
+        bed.appendChild(plant);
+      });
+
+      // Resize snap & label
+      let isResizing = false;
+
+      const resizeObserver = new ResizeObserver(() => {
+        isResizing = true
+        let w = parseInt(bed.style.width) + borderWidth;
+        let h = parseInt(bed.style.height) + borderWidth;
+        w = snapToGrid(w); // Ensure total width snaps correctly
+        h = snapToGrid(h); // Ensure total height snaps correctly
+        if (!checkOverlap(bed, parseInt(bed.style.left), parseInt(bed.style.top), w, h)) {
+          bed.style.width = `${w - borderWidth}px`; // Subtract border width
+          bed.style.height = `${h - borderWidth}px`; // Subtract border width
+          label.textContent = `${Math.round(w / getPixelsPerCm())} x ${Math.round(h / getPixelsPerCm())} cm`;
+          updateGardenSize(); // Update garden size after resizing
+        }
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (isResizing) {
+          let w = parseInt(bed.style.width) + borderWidth;
+          let h = parseInt(bed.style.height) + borderWidth;
+          w = snapToGrid(w); // Final snap after resizing
+          h = snapToGrid(h); // Final snap after resizing
+          if (!checkOverlap(bed, parseInt(bed.style.left), parseInt(bed.style.top), w, h)) {
+            bed.style.width = `${w - borderWidth}px`; // Subtract border width
+            bed.style.height = `${h - borderWidth}px`; // Subtract border width
+            label.textContent = `${Math.round(w / getPixelsPerCm())} x ${Math.round(h / getPixelsPerCm())} cm`;
+            updateGardenSize(); // Update garden size after resizing
+          }
+          isResizing = false;
+        }
+      });
+
+      resizeObserver.observe(bed);
+
+      // Append the bed after finding a valid position
+      garden.appendChild(bed);
+      bed.appendChild(deleteBtn);
+      bed.appendChild(duplicateBtn);
+      bed.appendChild(handle);
+      bed.appendChild(label);
+    }
+
+    // Add Save and Load buttons to the toolbar
+    const toolbar = document.querySelector(".toolbar");
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "💾 Save Garden";
+    saveButton.onclick = saveData;
+    toolbar.appendChild(saveButton);
+
+    const loadButton = document.createElement("button");
+    loadButton.textContent = "📂 Load Garden";
+    loadButton.onclick = loadData;
+    toolbar.appendChild(loadButton);
+
+    // Load data on page load
+    window.onload = loadData;
   </script>
 
 </body>
