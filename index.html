@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Garden Planner</title>
   <style>
+    :root {
+      --cm: 5px;
+    }
+
     body {
       font-family: sans-serif;
       padding: 1rem;
@@ -51,6 +55,17 @@
       user-select: none;
     }
 
+    .size-label {
+      position: absolute;
+      bottom: 2px;
+      right: 4px;
+      background: rgba(255, 255, 255, 0.8);
+      font-size: 0.7rem;
+      padding: 2px 4px;
+      border-radius: 3px;
+      pointer-events: none;
+    }
+
     .plant {
       position: absolute;
       width: 32px;
@@ -63,6 +78,27 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: rgba(255, 80, 80, 0.8);
+      border: none;
+      color: white;
+      font-size: 0.8rem;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      display: none;
+      cursor: pointer;
+      z-index: 10;
+    }
+
+    .bed:hover .delete-btn,
+    .plant:hover .delete-btn {
+      display: block;
     }
   </style>
 </head>
@@ -86,7 +122,7 @@
   <script>
     const garden = document.getElementById("garden");
     let selectedPlant = null;
-    const cm = 10; // 1 cm = 10 pixels
+    const cm = 5; // 1 cm = 5 pixels
 
     const plantImages = {
       Lavender: "https://img.icons8.com/emoji/48/lavender.png",
@@ -116,6 +152,14 @@
       handle.className = "drag-handle";
       handle.textContent = "🌱 Drag Me";
 
+      const label = document.createElement("div");
+      label.className = "size-label";
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "delete-btn";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.onclick = () => bed.remove();
+
       let isDragging = false;
       let dragOffsetX = 0;
       let dragOffsetY = 0;
@@ -124,11 +168,10 @@
         isDragging = true;
         dragOffsetX = e.offsetX;
         dragOffsetY = e.offsetY;
+        e.stopPropagation();
       });
 
-      document.addEventListener("mouseup", () => {
-        isDragging = false;
-      });
+      document.addEventListener("mouseup", () => isDragging = false);
 
       document.addEventListener("mousemove", (e) => {
         if (isDragging) {
@@ -137,13 +180,7 @@
         }
       });
 
-      // Right-click to remove bed
-      bed.addEventListener("contextmenu", (e) => {
-        e.preventDefault();
-        if (confirm("Remove this garden bed?")) bed.remove();
-      });
-
-      // Plant placement
+      // Click to add plant
       bed.addEventListener("click", (e) => {
         if (!selectedPlant || e.target.closest(".plant") || e.target.classList.contains("drag-handle")) return;
         const rect = bed.getBoundingClientRect();
@@ -153,16 +190,18 @@
         bed.appendChild(plant);
       });
 
-      // Resize snap
-      new ResizeObserver(entries => {
-        for (const entry of entries) {
-          const style = entry.target.style;
-          style.width = `${snapToGrid(parseInt(style.width))}px`;
-          style.height = `${snapToGrid(parseInt(style.height))}px`;
-        }
+      // Resize snap & label
+      new ResizeObserver(() => {
+        const w = parseInt(bed.style.width);
+        const h = parseInt(bed.style.height);
+        bed.style.width = `${snapToGrid(w)}px`;
+        bed.style.height = `${snapToGrid(h)}px`;
+        label.textContent = `${Math.round(w / cm)} x ${Math.round(h / cm)} cm`;
       }).observe(bed);
 
+      bed.appendChild(deleteBtn);
       bed.appendChild(handle);
+      bed.appendChild(label);
       garden.appendChild(bed);
     }
 
@@ -178,6 +217,12 @@
       img.title = name;
       div.appendChild(img);
 
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "delete-btn";
+      deleteBtn.textContent = "🗑️";
+      deleteBtn.onclick = () => div.remove();
+      div.appendChild(deleteBtn);
+
       let dragging = false;
       let offsetX = 0;
       let offsetY = 0;
@@ -189,6 +234,8 @@
         e.stopPropagation();
       });
 
+      document.addEventListener("mouseup", () => dragging = false);
+
       document.addEventListener("mousemove", (e) => {
         if (dragging) {
           const bed = div.parentElement;
@@ -198,20 +245,11 @@
         }
       });
 
-      document.addEventListener("mouseup", () => {
-        dragging = false;
-      });
-
-      div.addEventListener("dblclick", (e) => {
-        if (confirm(`Remove ${name}?`)) div.remove();
-        e.stopPropagation();
-      });
-
       return div;
     }
 
     function snapToGrid(val) {
-      return Math.round(val / cm / 10) * cm * 10;
+      return Math.round(val / (cm * 10)) * (cm * 10);
     }
   </script>
 
