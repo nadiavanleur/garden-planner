@@ -935,7 +935,7 @@
         alert("No garden data to share!");
         return;
       }
-      const compressedData = LZString.compressToUTF16(data); // Compress to UTF-16
+      const compressedData = LZString.compressToEncodedURIComponent(data); // Compress to URL-safe format
       const shareableLink = `${window.location.origin}${window.location.pathname}?data=${compressedData}`;
       navigator.clipboard.writeText(shareableLink).then(() => {
         alert("Shareable link copied to clipboard!");
@@ -949,7 +949,7 @@
       const sharedData = urlParams.get("data");
       if (sharedData) {
         try {
-          const decompressedData = LZString.decompressFromUTF16(sharedData); // Decompress from UTF-16
+          const decompressedData = LZString.decompressFromEncodedURIComponent(sharedData); // Decompress from URL-safe format
           const parsedData = JSON.parse(decompressedData);
           localStorage.setItem("gardenData", JSON.stringify(parsedData));
           loadData(); // Reload the garden with shared data
