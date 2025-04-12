@@ -38,11 +38,16 @@
     @media (min-width: 768px) {
       .container {
         flex-direction: row;
+        align-items: stretch;
+        /* Ensure sidebar matches garden height */
       }
 
       .sidebar {
         width: 300px;
-        height: 100%;
+        min-width: 250px;
+        /* Minimum width for the sidebar */
+        height: auto;
+        /* Match the height of the garden */
         position: relative;
         border-left: 1px solid #ccc;
         box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
@@ -53,6 +58,7 @@
       .sidebar {
         width: 100%;
         height: auto;
+        /* Unlimited height */
         border-left: none;
         box-shadow: none;
         margin-top: 1rem;
@@ -72,6 +78,8 @@
       flex-grow: 1;
       max-width: 100%;
       box-sizing: border-box;
+      overflow-x: auto;
+      /* Prevent horizontal overflow */
     }
 
     .bed {
@@ -155,7 +163,7 @@
 
     .plant span {
       display: block;
-      font-size: 2rem;
+      font-size: 1.5rem;
       text-align: center;
       user-select: none;
     }
@@ -225,23 +233,26 @@
     </div>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
   <script>
     const plantEmojis = {
-      Arugula: "🥗", // Rucola
+      Arugula: "🌱", // Rucola
+      Chamomile: "🌼",
+      Chives: "🌱",
+      Dill: "🌿",
+      Lavender: "💜",
       Marjoram: "🌿",
+      Onion: "🧅",
+      Sage: "🍃",
+      Strawberry: "🍓",
       "Curly Parsley": "🌱",
       "Flat Parsley": "🥬",
-      Lavender: "💜",
-      "Winter Thyme": "🌿",
-      Sage: "🍃",
-      "St. John's Wort": "🌼",
-      Valerian: "🌸",
-      Dill: "🌿",
-      Tomato: "🍅",
-      Strawberry: "🍓",
       "Spring Onion": "🧅",
-      Onion: "🧅",
       Thyme: "🌿", // Regular Thyme
+      Tomato: "🍅",
+      Valerian: "🌸",
+      "St. John's Wort": "🌼",
+      "Winter Thyme": "🌿",
     };
 
     const garden = document.getElementById("garden");
@@ -305,12 +316,31 @@
     }
 
     function togglePlantSelection(index) {
+      console.log("togglePlantSelection called");
+
       if (selectedPlantIndex === index) {
         selectedPlantIndex = null; // Deselect if already selected
       } else {
         selectedPlantIndex = index; // Select the clicked plant
       }
-      updateSidebar(); // Update sidebar to reflect selection
+
+      // Highlight the selected plant in the garden
+      document.querySelectorAll(".plant").forEach((plant, i) => {
+        if (i === selectedPlantIndex) {
+          plant.classList.add("selected");
+        } else {
+          plant.classList.remove("selected");
+        }
+      });
+
+      // Update the sidebar to reflect the selection
+      updateSidebar();
+
+      // Scroll to the selected plant in the sidebar
+      const selectedPlantInfo = document.querySelector(`.plant-info[data-plant-index="${index}"]`);
+      if (selectedPlantInfo) {
+        selectedPlantInfo.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
 
     function updateGardenSize() {
@@ -333,7 +363,15 @@
 
       garden.style.minWidth = `${maxRight}px`;
       garden.style.minHeight = `${maxBottom}px`;
+
+      // Ensure sidebar matches garden height on desktop
+      if (window.innerWidth >= 768) {
+        const sidebar = document.querySelector(".sidebar");
+        sidebar.style.height = `${garden.offsetHeight}px`;
+      }
     }
+
+    window.addEventListener("resize", updateGardenSize); // Update sidebar height on resize
 
     function addBed(existingBed = null) {
       console.log("addBed called");
@@ -570,7 +608,8 @@
 
       div.addEventListener("click", (e) => {
         e.stopPropagation(); // Prevent event bubbling
-        togglePlantSelection([...document.querySelectorAll(".plant")].indexOf(div));
+        const plantIndex = [...document.querySelectorAll(".plant")].indexOf(div);
+        togglePlantSelection(plantIndex); // Ensure correct index is passed
       });
 
       updateSidebar(); // Update sidebar when a new plant is added
@@ -583,7 +622,8 @@
 
       document.querySelectorAll(".plant").forEach((plant, index) => {
         const name = plant.querySelector("span").title;
-        const sowingDate = plant.querySelector("input[type='date']").value || "Not Set";
+        const sowingDateInput = plant.querySelector("input[type='date']");
+        const sowingDate = sowingDateInput.value || "Not Set";
 
         const plantInfo = document.createElement("div");
         plantInfo.className = "plant-info";
@@ -594,7 +634,18 @@
         plantInfo.appendChild(nameDiv);
 
         const sowingDateDiv = document.createElement("div");
-        sowingDateDiv.textContent = `Sowing Date: ${sowingDate}`;
+        const sowingDateLabel = document.createElement("label");
+        sowingDateLabel.textContent = "Sowing Date: ";
+        const sowingDateField = document.createElement("input");
+        sowingDateField.type = "date";
+        sowingDateField.value = sowingDate === "Not Set" ? "" : sowingDate;
+        sowingDateField.onchange = () => {
+          sowingDateInput.value = sowingDateField.value; // Sync with the plant element
+          updateSidebar(); // Update sidebar to reflect changes
+        };
+        sowingDateField.addEventListener("click", (e) => e.stopPropagation()); // Prevent event bubbling
+        sowingDateLabel.appendChild(sowingDateField);
+        sowingDateDiv.appendChild(sowingDateLabel);
         plantInfo.appendChild(sowingDateDiv);
 
         const deleteBtn = document.createElement("button");
@@ -845,6 +896,70 @@
       bed.appendChild(label);
     }
 
+    function exportData() {
+      const data = localStorage.getItem("gardenData");
+      if (!data) {
+        alert("No garden data to export!");
+        return;
+      }
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "garden-data.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          localStorage.setItem("gardenData", JSON.stringify(data));
+          loadData(); // Reload the garden with imported data
+          alert("Garden data imported successfully!");
+        } catch (error) {
+          alert("Invalid file format. Please upload a valid JSON file.");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function shareData() {
+      const data = localStorage.getItem("gardenData");
+      if (!data) {
+        alert("No garden data to share!");
+        return;
+      }
+      const compressedData = LZString.compressToUTF16(data); // Compress to UTF-16
+      const shareableLink = `${window.location.origin}${window.location.pathname}?data=${compressedData}`;
+      navigator.clipboard.writeText(shareableLink).then(() => {
+        alert("Shareable link copied to clipboard!");
+      }).catch(() => {
+        alert("Failed to copy the link to clipboard.");
+      });
+    }
+
+    function loadSharedData() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sharedData = urlParams.get("data");
+      if (sharedData) {
+        try {
+          const decompressedData = LZString.decompressFromUTF16(sharedData); // Decompress from UTF-16
+          const parsedData = JSON.parse(decompressedData);
+          localStorage.setItem("gardenData", JSON.stringify(parsedData));
+          loadData(); // Reload the garden with shared data
+          alert("Shared garden data loaded successfully!");
+        } catch (error) {
+          alert("Failed to load shared data. Invalid format.");
+        }
+      }
+    }
+
     // Update toolbar buttons
     const toolbar = document.querySelector(".toolbar");
     toolbar.innerHTML = `
@@ -853,28 +968,31 @@
         <span>Pick a Plant:</span>
         <select id="plantSelector" onchange="selectPlant(this.value)">
           <option value="">-- Select a Plant --</option>
-          ${Object.keys(plantEmojis).map(plant => `<option value="${plant}">${plant}</option>`).join('')}
+          ${Object.keys(plantEmojis)
+        .sort()
+        .map((plant) => `<option value="${plant}">${plant}</option>`)
+        .join("")}
         </select>
       </label>
       <label>
         <span>Pixels per 1cm:</span>
         <input type="number" id="pixelsPerCm" value="5" min="1" onchange="updatePixelsPerCm()" />
       </label>
+      <button onclick="saveData()">💾 Save Garden</button>
+      <button onclick="loadData()">📂 Load Garden</button>
+      <!-- <button onclick="exportData()">📤 Export Data</button>
+      <label>
+        <span>📥 Import Data:</span>
+        <input type="file" accept="application/json" onchange="importData(event)" />
+      </label> -->
+      <button onclick="shareData()">🔗 Share Data</button>
     `;
 
-    // Add Save and Load buttons to the toolbar
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "💾 Save Garden";
-    saveButton.onclick = saveData;
-    toolbar.appendChild(saveButton);
-
-    const loadButton = document.createElement("button");
-    loadButton.textContent = "📂 Load Garden";
-    loadButton.onclick = loadData;
-    toolbar.appendChild(loadButton);
-
-    // Load data on page load
-    window.onload = loadData;
+    // Load shared data on page load
+    window.onload = () => {
+      loadSharedData();
+      loadData();
+    };
   </script>
 
 </body>
