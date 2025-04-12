@@ -132,6 +132,13 @@
       user-select: none;
     }
 
+    .plant .sowing-date {
+      font-size: 0.7rem;
+      color: #555;
+      text-align: center;
+      margin-top: 4px;
+    }
+
     .plant .delete-btn {
       position: absolute;
       top: 2px;
@@ -177,6 +184,7 @@
       Strawberry: "🍓",
       "Spring Onion": "🧅",
       Onion: "🧅",
+      Thyme: "🌿", // Regular Thyme
     };
 
     const garden = document.getElementById("garden");
@@ -228,14 +236,14 @@
     function deselectPlant() {
       console.log("deselectPlant called");
       selectedPlant = null;
-      document.querySelectorAll('.toolbar button').forEach(btn => btn.style.background = '');
+      const dropdown = document.getElementById("plantSelector");
+      if (dropdown) dropdown.value = ""; // Reset dropdown selection
     }
 
     function selectPlant(name) {
       selectedPlant = name;
-      document.querySelectorAll('.toolbar button').forEach(btn => btn.style.background = '');
-      const button = [...document.querySelectorAll('.toolbar button')].find(btn => btn.textContent === name);
-      if (button) button.style.background = '#cfc';
+      const dropdown = document.getElementById("plantSelector");
+      if (dropdown) dropdown.value = name; // Update dropdown selection
     }
 
     function updateGardenSize() {
@@ -459,6 +467,18 @@
       plantName.textContent = name;
       div.appendChild(plantName);
 
+      const sowingDateLabel = document.createElement("div");
+      sowingDateLabel.className = "sowing-date";
+      sowingDateLabel.textContent = "Sowing Date: Not Set";
+      div.appendChild(sowingDateLabel);
+
+      const sowingDateInput = document.createElement("input");
+      sowingDateInput.type = "date";
+      sowingDateInput.onchange = () => {
+        sowingDateLabel.textContent = `Sowing Date: ${sowingDateInput.value}`;
+      };
+      div.appendChild(sowingDateInput);
+
       const deleteBtn = document.createElement("button");
       deleteBtn.className = "delete-btn";
       deleteBtn.textContent = "🗑️";
@@ -498,7 +518,7 @@
 
     function saveData() {
       const data = {
-        pixelsPerCm: getPixelsPerCm(), // Save the current pixelsPerCm value
+        pixelsPerCm: getPixelsPerCm(),
         beds: [],
       };
 
@@ -516,6 +536,7 @@
             name: plant.querySelector(".plant-name").textContent,
             left: parseFloat(plant.style.left),
             top: parseFloat(plant.style.top),
+            sowingDate: plant.querySelector("input[type='date']").value || null,
           };
           bedData.plants.push(plantData);
         });
@@ -531,15 +552,13 @@
       const data = JSON.parse(localStorage.getItem("gardenData"));
       if (!data) return;
 
-      // Clear the current garden
       garden.innerHTML = "";
 
-      // Restore pixelsPerCm value
       if (data.pixelsPerCm) {
         const input = document.getElementById("pixelsPerCm");
         input.value = data.pixelsPerCm;
         input.dataset.oldValue = data.pixelsPerCm;
-        updatePixelsPerCm(); // Apply the restored value
+        updatePixelsPerCm();
       }
 
       data.beds.forEach((bedData) => {
@@ -552,11 +571,17 @@
 
         bedData.plants.forEach((plantData) => {
           const plant = createPlantElement(plantData.name, plantData.left, plantData.top);
+          if (plantData.sowingDate) {
+            const sowingDateInput = plant.querySelector("input[type='date']");
+            const sowingDateLabel = plant.querySelector(".sowing-date");
+            sowingDateInput.value = plantData.sowingDate;
+            sowingDateLabel.textContent = `Sowing Date: ${plantData.sowingDate}`;
+          }
           bed.appendChild(plant);
         });
 
         garden.appendChild(bed);
-        addBedEventListeners(bed); // Reapply event listeners
+        addBedEventListeners(bed);
       });
     }
 
@@ -669,8 +694,13 @@
     const toolbar = document.querySelector(".toolbar");
     toolbar.innerHTML = `
       <button onclick="addBed()">➕ Add Garden Bed</button>
-      <span>Pick a Plant:</span>
-      ${Object.keys(plantEmojis).map(plant => `<button onclick="selectPlant('${plant}')">${plant}</button>`).join('')}
+      <label>
+        <span>Pick a Plant:</span>
+        <select id="plantSelector" onchange="selectPlant(this.value)">
+          <option value="">-- Select a Plant --</option>
+          ${Object.keys(plantEmojis).map(plant => `<option value="${plant}">${plant}</option>`).join('')}
+        </select>
+      </label>
       <label>
         <span>Pixels per 1cm:</span>
         <input type="number" id="pixelsPerCm" value="5" min="1" onchange="updatePixelsPerCm()" />
