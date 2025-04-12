@@ -27,6 +27,38 @@
       padding: 0.5rem;
     }
 
+    .container {
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+    }
+
+    @media (min-width: 768px) {
+      .container {
+        flex-direction: row;
+      }
+
+      .sidebar {
+        width: 300px;
+        height: 100%;
+        position: relative;
+        border-left: 1px solid #ccc;
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    @media (max-width: 767px) {
+      .sidebar {
+        width: 100%;
+        height: auto;
+        border-left: none;
+        box-shadow: none;
+        margin-top: 1rem;
+      }
+    }
+
     .garden {
       position: relative;
       width: 100%;
@@ -37,6 +69,9 @@
       background-size: calc(10 * var(--cm)) calc(10 * var(--cm));
       border: 2px solid #444;
       overflow: auto;
+      flex-grow: 1;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .bed {
@@ -140,16 +175,11 @@
     }
 
     .sidebar {
-      position: fixed;
-      right: 0;
-      top: 0;
-      width: 300px;
-      height: 100%;
       background: #fff;
-      border-left: 1px solid #ccc;
-      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
       padding: 1rem;
       overflow-y: auto;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     .sidebar h2 {
@@ -187,11 +217,12 @@
   <h1>🌿 Garden Planner</h1>
   <div class="toolbar"></div>
 
-  <div class="garden" id="garden"></div>
-
-  <div class="sidebar" id="sidebar">
-    <h2>Plant Information</h2>
-    <div id="plantInfoContainer"></div>
+  <div class="container">
+    <div class="garden" id="garden"></div>
+    <div class="sidebar" id="sidebar">
+      <h2>Plant Information</h2>
+      <div id="plantInfoContainer"></div>
+    </div>
   </div>
 
   <script>
@@ -498,15 +529,48 @@
       emoji.title = name;
       div.appendChild(emoji);
 
+      const nameLabel = document.createElement("div");
+      nameLabel.textContent = name;
+      nameLabel.style.fontSize = "0.8rem";
+      nameLabel.style.marginTop = "4px";
+      nameLabel.style.textAlign = "center";
+      div.appendChild(nameLabel);
+
       const sowingDateInput = document.createElement("input");
       sowingDateInput.type = "date";
       sowingDateInput.style.display = "none"; // Hidden, used for storing data
       sowingDateInput.onchange = updateSidebar; // Update sidebar on change
       div.appendChild(sowingDateInput);
 
+      let isDragging = false;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
+      div.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        const rect = div.getBoundingClientRect();
+        dragOffsetX = e.clientX - rect.left - div.offsetWidth / 2;
+        dragOffsetY = e.clientY - rect.top - div.offsetHeight / 2;
+        e.stopPropagation();
+      });
+
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          const parentRect = div.parentElement.getBoundingClientRect();
+          const newLeft = Math.max(0, e.clientX - parentRect.left - dragOffsetX);
+          const newTop = Math.max(0, e.clientY - parentRect.top - dragOffsetY);
+          div.style.left = `${newLeft}px`;
+          div.style.top = `${newTop}px`;
+        }
+      });
+
       div.addEventListener("click", (e) => {
         e.stopPropagation(); // Prevent event bubbling
-        updateSidebar(); // Update sidebar when a plant is clicked
+        togglePlantSelection([...document.querySelectorAll(".plant")].indexOf(div));
       });
 
       updateSidebar(); // Update sidebar when a new plant is added
@@ -592,7 +656,12 @@
       });
     }
 
-    document.addEventListener("click", () => {
+    document.addEventListener("click", (e) => {
+      // Deselect all plants when clicking outside
+      if (!e.target.closest(".plant") && !e.target.closest(".plant-info")) {
+        selectedPlantIndex = null;
+        updateSidebar(); // Update sidebar to reflect deselection
+      }
       updateSidebar(); // Update sidebar when clicking outside
     });
 
@@ -619,7 +688,7 @@
 
         bed.querySelectorAll(".plant").forEach((plant) => {
           const plantData = {
-            name: plant.querySelector(".plant-popup div:first-child").textContent.replace("Name: ", ""),
+            name: plant.querySelector("span").title,
             left: parseFloat(plant.style.left),
             top: parseFloat(plant.style.top),
             sowingDate: plant.querySelector("input[type='date']").value || null,
