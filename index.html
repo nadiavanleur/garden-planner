@@ -157,31 +157,26 @@
 <body>
 
   <h1>🌿 Garden Planner</h1>
-  <div class="toolbar">
-    <button onclick="addBed()">➕ Add Garden Bed</button>
-    <span>Pick a Plant:</span>
-    <button onclick="selectPlant('Lavender')">Lavender</button>
-    <button onclick="selectPlant('Thyme')">Thyme</button>
-    <button onclick="selectPlant('Sage')">Sage</button>
-    <button onclick="selectPlant('Tomato')">Tomato</button>
-    <button onclick="selectPlant('Parsley')">Parsley</button>
-    <button onclick="selectPlant('Chamomile')">Chamomile</button>
-    <label>
-      <span>Pixels per 1cm:</span>
-      <input type="number" id="pixelsPerCm" value="5" min="1" onchange="updatePixelsPerCm()" />
-    </label>
-  </div>
+  <div class="toolbar"></div>
 
   <div class="garden" id="garden"></div>
 
   <script>
     const plantEmojis = {
+      Arugula: "🥗", // Rucola
+      Marjoram: "🌿",
+      "Curly Parsley": "🌱",
+      "Flat Parsley": "🥬",
       Lavender: "💜",
-      Thyme: "🌿",
+      "Winter Thyme": "🌿",
       Sage: "🍃",
+      "St. John's Wort": "🌼",
+      Valerian: "🌸",
+      Dill: "🌿",
       Tomato: "🍅",
-      Parsley: "🥬",
-      Chamomile: "🌼",
+      Strawberry: "🍓",
+      "Spring Onion": "🧅",
+      Onion: "🧅",
     };
 
     const garden = document.getElementById("garden");
@@ -237,7 +232,6 @@
     }
 
     function selectPlant(name) {
-      console.log("selectPlant called");
       selectedPlant = name;
       document.querySelectorAll('.toolbar button').forEach(btn => btn.style.background = '');
       const button = [...document.querySelectorAll('.toolbar button')].find(btn => btn.textContent === name);
@@ -671,8 +665,19 @@
       bed.appendChild(label);
     }
 
-    // Add Save and Load buttons to the toolbar
+    // Update toolbar buttons
     const toolbar = document.querySelector(".toolbar");
+    toolbar.innerHTML = `
+      <button onclick="addBed()">➕ Add Garden Bed</button>
+      <span>Pick a Plant:</span>
+      ${Object.keys(plantEmojis).map(plant => `<button onclick="selectPlant('${plant}')">${plant}</button>`).join('')}
+      <label>
+        <span>Pixels per 1cm:</span>
+        <input type="number" id="pixelsPerCm" value="5" min="1" onchange="updatePixelsPerCm()" />
+      </label>
+    `;
+
+    // Add Save and Load buttons to the toolbar
     const saveButton = document.createElement("button");
     saveButton.textContent = "💾 Save Garden";
     saveButton.onclick = saveData;
