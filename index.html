@@ -40,6 +40,14 @@
       overflow: hidden;
     }
 
+    .drag-handle {
+      background: #ccc;
+      padding: 4px;
+      cursor: move;
+      font-size: 0.75rem;
+      text-align: center;
+    }
+
     .plant {
       position: absolute;
       width: 32px;
@@ -99,23 +107,33 @@
       bed.style.height = "100px";
       bed.style.left = "50px";
       bed.style.top = "50px";
-      bed.draggable = true;
 
-      let offsetX, offsetY;
+      const handle = document.createElement("div");
+      handle.className = "drag-handle";
+      handle.textContent = "Drag Bed";
 
-      bed.addEventListener("dragstart", (e) => {
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
+      let isDragging = false;
+      let dragOffsetX = 0;
+      let dragOffsetY = 0;
+
+      handle.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        dragOffsetX = e.offsetX;
+        dragOffsetY = e.offsetY;
       });
 
-      garden.addEventListener("dragover", (e) => e.preventDefault());
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+      });
 
-      garden.addEventListener("drop", (e) => {
-        if (e.target === garden || e.target.classList.contains("bed")) {
-          bed.style.left = `${e.pageX - garden.offsetLeft - offsetX}px`;
-          bed.style.top = `${e.pageY - garden.offsetTop - offsetY}px`;
+      document.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          bed.style.left = `${e.pageX - garden.offsetLeft - dragOffsetX}px`;
+          bed.style.top = `${e.pageY - garden.offsetTop - dragOffsetY}px`;
         }
       });
+
+      bed.appendChild(handle);
 
       bed.addEventListener("click", (e) => {
         if (!selectedPlant || e.target.closest(".plant")) return;
@@ -134,7 +152,6 @@
       div.className = "plant";
       div.style.left = `${x}px`;
       div.style.top = `${y}px`;
-      div.draggable = true;
 
       const img = document.createElement("img");
       img.src = plantImages[name] || "https://img.icons8.com/emoji/48/seedling.png";
@@ -142,24 +159,31 @@
       img.title = name;
       div.appendChild(img);
 
-      div.addEventListener("dragstart", (e) => {
-        e.dataTransfer.setData("text/plain", null);
-        div.dataset.dragging = "true";
-        div.dataset.offsetX = e.offsetX;
-        div.dataset.offsetY = e.offsetY;
+      let dragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      div.addEventListener("mousedown", (e) => {
+        dragging = true;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        e.stopPropagation();
       });
 
-      div.addEventListener("dragend", (e) => {
-        const bed = div.parentElement;
-        const rect = bed.getBoundingClientRect();
-        const offsetX = parseInt(div.dataset.offsetX);
-        const offsetY = parseInt(div.dataset.offsetY);
-        div.style.left = `${e.clientX - rect.left - offsetX}px`;
-        div.style.top = `${e.clientY - rect.top - offsetY}px`;
-        delete div.dataset.dragging;
+      document.addEventListener("mousemove", (e) => {
+        if (dragging) {
+          const bed = div.parentElement;
+          const rect = bed.getBoundingClientRect();
+          div.style.left = `${e.clientX - rect.left - offsetX}px`;
+          div.style.top = `${e.clientY - rect.top - offsetY}px`;
+        }
       });
 
-      div.addEventListener("click", (e) => {
+      document.addEventListener("mouseup", () => {
+        dragging = false;
+      });
+
+      div.addEventListener("dblclick", (e) => {
         if (confirm(`Remove ${name}?`)) {
           div.remove();
         }
