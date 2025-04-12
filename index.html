@@ -43,8 +43,7 @@
       }
 
       .sidebar {
-        width: 300px;
-        min-width: 250px;
+        min-width: 300px;
         /* Minimum width for the sidebar */
         height: auto;
         /* Match the height of the garden */
@@ -274,13 +273,11 @@
     let selectedPlantIndex = null;
 
     function getPixelsPerCm() {
-      console.log("getPixelsPerCm called");
       const input = document.getElementById("pixelsPerCm");
       return Math.max(1, parseInt(input.value) || 5); // Ensure a valid value
     }
 
     function updatePixelsPerCm() {
-      console.log("updatePixelsPerCm called");
       const input = document.getElementById("pixelsPerCm");
       const oldPixelsPerCm = parseFloat(input.dataset.oldValue) || getPixelsPerCm();
       const newPixelsPerCm = getPixelsPerCm();
@@ -317,7 +314,6 @@
     }
 
     function deselectPlant() {
-      console.log("deselectPlant called");
       selectedPlant = null;
       const dropdown = document.getElementById("plantSelector");
       if (dropdown) dropdown.value = ""; // Reset dropdown selection
@@ -330,8 +326,6 @@
     }
 
     function togglePlantSelection(index) {
-      console.log("togglePlantSelection called");
-
       if (selectedPlantIndex === index) {
         selectedPlantIndex = null; // Deselect if already selected
       } else {
@@ -358,7 +352,6 @@
     }
 
     function updateGardenSize() {
-      console.log("updateGardenSize called");
       deselectPlant(); // Deselect plant when updating garden size
 
       const beds = document.querySelectorAll(".bed");
@@ -388,7 +381,6 @@
     window.addEventListener("resize", updateGardenSize); // Update sidebar height on resize
 
     function addBed(existingBed = null) {
-      console.log("addBed called");
       const borderWidth = 8; // Total border width (4px on each side)
 
       const bed = document.createElement("div");
@@ -536,7 +528,6 @@
     }
 
     function checkOverlap(currentBed, newLeft, newTop, newWidth = null, newHeight = null) {
-      console.log("checkOverlap called");
       const beds = document.querySelectorAll(".bed");
       const currentRect = {
         left: newLeft,
@@ -570,7 +561,6 @@
     }
 
     function createPlantElement(name, x, y) {
-      console.log("createPlantElement called");
       const div = document.createElement("div");
       div.className = "plant";
       div.style.left = `${x}px`;
@@ -644,7 +634,8 @@
         plantInfo.dataset.plantIndex = index;
 
         const nameDiv = document.createElement("div");
-        nameDiv.textContent = `Name: ${name}`;
+        console.log(nameDiv)
+        nameDiv.innerHTML = `<strong>${name}</strong>`;
         plantInfo.appendChild(nameDiv);
 
         const sowingDateDiv = document.createElement("div");
@@ -731,7 +722,6 @@
     });
 
     function snapToGrid(val) {
-      console.log("snapToGrid called");
       const pixelsPer10Cm = getPixelsPerCm() * 10; // 10cm grid
       return Math.round(val / pixelsPer10Cm) * pixelsPer10Cm;
     }
