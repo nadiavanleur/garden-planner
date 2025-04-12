@@ -31,16 +31,10 @@
       position: relative;
       width: 100%;
       height: 600px;
-      background: repeating-linear-gradient(to right,
-          #d2e8d2,
-          #d2e8d2 1px,
-          #c8e0c8 1px,
-          #c8e0c8 calc(10 * var(--cm))),
-        repeating-linear-gradient(to bottom,
-          #d2e8d2,
-          #d2e8d2 1px,
-          #c8e0c8 1px,
-          #c8e0c8 calc(10 * var(--cm)));
+      background-color: #c8e0c8;
+      background-image:
+        linear-gradient(#d2e8d2 1px, transparent 1px), linear-gradient(90deg, #d2e8d2 1px, transparent 1px);
+      background-size: calc(10 * var(--cm)) calc(10 * var(--cm));
       border: 2px solid #444;
       overflow: auto;
     }
@@ -510,6 +504,7 @@
 
     function saveData() {
       const data = {
+        pixelsPerCm: getPixelsPerCm(), // Save the current pixelsPerCm value
         beds: [],
       };
 
@@ -542,6 +537,17 @@
       const data = JSON.parse(localStorage.getItem("gardenData"));
       if (!data) return;
 
+      // Clear the current garden
+      garden.innerHTML = "";
+
+      // Restore pixelsPerCm value
+      if (data.pixelsPerCm) {
+        const input = document.getElementById("pixelsPerCm");
+        input.value = data.pixelsPerCm;
+        input.dataset.oldValue = data.pixelsPerCm;
+        updatePixelsPerCm(); // Apply the restored value
+      }
+
       data.beds.forEach((bedData) => {
         const bed = document.createElement("div");
         bed.className = "bed";
@@ -561,6 +567,11 @@
     }
 
     function addBedEventListeners(bed) {
+      const borderWidth = 8; // Total border width (4px on each side)
+
+      const totalWidth = parseInt(bed.style.width) + borderWidth;
+      const totalHeight = parseInt(bed.style.height) + borderWidth;
+
       const handle = document.createElement("div");
       handle.className = "drag-handle";
       handle.textContent = "🌱 Drag Me";
