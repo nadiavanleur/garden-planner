@@ -87,8 +87,11 @@
       background: #fff7e6;
       border: 4px solid #8b5a2b;
       box-shadow: inset 0 0 5px #ccc;
-      resize: both;
       overflow: hidden;
+    }
+
+    .bed:hover {
+      resize: both;
     }
 
     .bed .drag-handle {
@@ -237,20 +240,31 @@
   <script>
     const plantEmojis = {
       Arugula: "🌱", // Rucola
+      Borage: "💠", // Komkommerkruid
+      Calendula: "🏵️",
       Chamomile: "🌼",
       Chives: "🌱",
-      Dill: "🌿",
-      Lavender: "💜",
-      Marjoram: "🌿",
-      Onion: "🧅",
-      Sage: "🍃",
-      Strawberry: "🍓",
+      Coriander: "🌿",
       "Curly Parsley": "🌱",
-      "Flat Parsley": "🥬",
-      "Spring Onion": "🧅",
+      Dill: "🌿",
+      Echinacea: "🌸", // Rode zonnehoed
+      Garlic: "🧄",
+      Lavender: "🪻",
+      "Flat Parsley": "🌱",
+      Mint: "🌿",
+      Mustard: "🌱",
+      Onion: "🧅",
+      Radish: "🌶️",
+      Rosemary: "🌿",
+      Sage: "🍃",
+      Stevia: "🍃",
+      Strawberry: "🍓",
+      "Lemon Balm": "🌿", // Citroenmelisse
+      "Spring Onion": "🌱",
       Thyme: "🌿", // Regular Thyme
       Tomato: "🍅",
-      Valerian: "🌸",
+      Valerian: "💮",
+      Nasturtium: "🌺", // Waterkers
       "St. John's Wort": "🌼",
       "Winter Thyme": "🌿",
     };
@@ -970,7 +984,7 @@
           <option value="">-- Select a Plant --</option>
           ${Object.keys(plantEmojis)
         .sort()
-        .map((plant) => `<option value="${plant}">${plant}</option>`)
+        .map((plant) => `<option value="${plant}">${plant} ${plantEmojis[plant]}</option>`)
         .join("")}
         </select>
       </label>
