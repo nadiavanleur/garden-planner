@@ -168,13 +168,15 @@
       margin-top: 0.5rem;
     }
 
-    .plant.highlight {
-      outline: 3px solid #ff0;
+    .plant.highlight,
+    .plant.selected {
+      outline: 3px solid #00f;
       z-index: 10;
     }
 
-    .plant-info.highlight {
-      background: #ffffcc;
+    .plant-info.highlight,
+    .plant-info.selected {
+      background: #cce5ff;
     }
   </style>
 </head>
@@ -212,6 +214,7 @@
 
     const garden = document.getElementById("garden");
     let selectedPlant = null;
+    let selectedPlantIndex = null;
 
     function getPixelsPerCm() {
       console.log("getPixelsPerCm called");
@@ -267,6 +270,15 @@
       selectedPlant = name;
       const dropdown = document.getElementById("plantSelector");
       if (dropdown) dropdown.value = name; // Update dropdown selection
+    }
+
+    function togglePlantSelection(index) {
+      if (selectedPlantIndex === index) {
+        selectedPlantIndex = null; // Deselect if already selected
+      } else {
+        selectedPlantIndex = index; // Select the clicked plant
+      }
+      updateSidebar(); // Update sidebar to reflect selection
     }
 
     function updateGardenSize() {
@@ -524,6 +536,7 @@
         deleteBtn.textContent = "Delete Plant";
         deleteBtn.onclick = () => {
           plant.remove();
+          if (selectedPlantIndex === index) selectedPlantIndex = null; // Deselect if deleted
           updateSidebar(); // Update sidebar after deletion
         };
         plantInfo.appendChild(deleteBtn);
@@ -536,19 +549,43 @@
           plant.classList.remove("highlight");
         });
 
+        // Add click-to-select functionality for sidebar
+        plantInfo.addEventListener("click", () => {
+          togglePlantSelection(index);
+        });
+
+        // Highlight if selected
+        if (selectedPlantIndex === index) {
+          plantInfo.classList.add("selected");
+        }
+
         container.appendChild(plantInfo);
       });
 
-      // Add hover effect for garden plants
+      // Add hover and click-to-select functionality for garden plants
       document.querySelectorAll(".plant").forEach((plant, index) => {
         plant.addEventListener("mouseenter", () => {
           const correspondingInfo = document.querySelector(`.plant-info[data-plant-index="${index}"]`);
           if (correspondingInfo) correspondingInfo.classList.add("highlight");
+          plant.classList.add("highlight");
         });
         plant.addEventListener("mouseleave", () => {
           const correspondingInfo = document.querySelector(`.plant-info[data-plant-index="${index}"]`);
           if (correspondingInfo) correspondingInfo.classList.remove("highlight");
+          plant.classList.remove("highlight");
         });
+
+        plant.addEventListener("click", (e) => {
+          e.stopPropagation(); // Prevent event bubbling
+          togglePlantSelection(index);
+        });
+
+        // Highlight if selected
+        if (selectedPlantIndex === index) {
+          plant.classList.add("selected");
+        } else {
+          plant.classList.remove("selected");
+        }
       });
     }
 
@@ -619,9 +656,7 @@
           const plant = createPlantElement(plantData.name, plantData.left, plantData.top);
           if (plantData.sowingDate) {
             const sowingDateInput = plant.querySelector("input[type='date']");
-            const sowingDateLabel = plant.querySelector(".plant-popup div:nth-child(2)");
             sowingDateInput.value = plantData.sowingDate;
-            sowingDateLabel.textContent = `Sowing Date: ${plantData.sowingDate}`;
           }
           bed.appendChild(plant);
         });
@@ -629,6 +664,8 @@
         garden.appendChild(bed);
         addBedEventListeners(bed);
       });
+
+      updateSidebar(); // Ensure the sidebar is updated after loading all plants
     }
 
     function addBedEventListeners(bed) {
