@@ -8,7 +8,6 @@
   <style>
     body {
       font-family: sans-serif;
-      margin: 0;
       padding: 1rem;
       background: #f0f9f0;
     }
@@ -43,14 +42,22 @@
 
     .plant {
       position: absolute;
-      font-size: 0.75rem;
-      color: green;
+      width: 32px;
+      height: 32px;
+      cursor: move;
       transform: translate(-50%, -50%);
+    }
+
+    .plant img {
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
     }
   </style>
 </head>
 
 <body>
+
   <h1>Garden Planner</h1>
   <div class="toolbar">
     <button onclick="addBed()">➕ Add Garden Bed</button>
@@ -69,10 +76,20 @@
     const garden = document.getElementById("garden");
     let selectedPlant = null;
 
+    const plantImages = {
+      Lavender: "https://img.icons8.com/emoji/48/lavender.png",
+      Thyme: "https://img.icons8.com/emoji/48/herb-emoji.png",
+      Sage: "https://img.icons8.com/emoji/48/leaf-fluttering-in-wind.png",
+      Tomato: "https://img.icons8.com/emoji/48/tomato.png",
+      Parsley: "https://img.icons8.com/emoji/48/leafy-green.png",
+      Chamomile: "https://img.icons8.com/emoji/48/blossom.png"
+    };
+
     function selectPlant(name) {
       selectedPlant = name;
       document.querySelectorAll('.toolbar button').forEach(btn => btn.style.background = '');
-      [...document.querySelectorAll('.toolbar button')].find(btn => btn.textContent === name).style.background = '#cfc';
+      const button = [...document.querySelectorAll('.toolbar button')].find(btn => btn.textContent === name);
+      if (button) button.style.background = '#cfc';
     }
 
     function addBed() {
@@ -101,21 +118,58 @@
       });
 
       bed.addEventListener("click", (e) => {
-        if (!selectedPlant) return;
+        if (!selectedPlant || e.target.closest(".plant")) return;
         const rect = bed.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-        const plant = document.createElement("div");
-        plant.className = "plant";
-        plant.style.left = `${x}px`;
-        plant.style.top = `${y}px`;
-        plant.textContent = selectedPlant;
+        const plant = createPlantElement(selectedPlant, x, y);
         bed.appendChild(plant);
       });
 
       garden.appendChild(bed);
     }
+
+    function createPlantElement(name, x, y) {
+      const div = document.createElement("div");
+      div.className = "plant";
+      div.style.left = `${x}px`;
+      div.style.top = `${y}px`;
+      div.draggable = true;
+
+      const img = document.createElement("img");
+      img.src = plantImages[name] || "https://img.icons8.com/emoji/48/seedling.png";
+      img.alt = name;
+      img.title = name;
+      div.appendChild(img);
+
+      div.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/plain", null);
+        div.dataset.dragging = "true";
+        div.dataset.offsetX = e.offsetX;
+        div.dataset.offsetY = e.offsetY;
+      });
+
+      div.addEventListener("dragend", (e) => {
+        const bed = div.parentElement;
+        const rect = bed.getBoundingClientRect();
+        const offsetX = parseInt(div.dataset.offsetX);
+        const offsetY = parseInt(div.dataset.offsetY);
+        div.style.left = `${e.clientX - rect.left - offsetX}px`;
+        div.style.top = `${e.clientY - rect.top - offsetY}px`;
+        delete div.dataset.dragging;
+      });
+
+      div.addEventListener("click", (e) => {
+        if (confirm(`Remove ${name}?`)) {
+          div.remove();
+        }
+        e.stopPropagation();
+      });
+
+      return div;
+    }
   </script>
+
 </body>
 
 </html>
