@@ -162,6 +162,7 @@
       border: 1px solid #ddd;
       border-radius: 5px;
       background: #f9f9f9;
+      cursor: pointer;
     }
 
     .plant-info button {
@@ -544,9 +545,11 @@
         // Add hover effect for sidebar
         plantInfo.addEventListener("mouseenter", () => {
           plant.classList.add("highlight");
+          plantInfo.classList.add("highlight");
         });
         plantInfo.addEventListener("mouseleave", () => {
           plant.classList.remove("highlight");
+          plantInfo.classList.remove("highlight");
         });
 
         // Add click-to-select functionality for sidebar
