@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Garden Planner</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 1rem;
+      background: #f0f9f0;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .toolbar button {
+      padding: 0.5rem;
+    }
+
+    .garden {
+      position: relative;
+      width: 100%;
+      height: 600px;
+      background: #d2e8d2;
+      border: 2px solid #444;
+      overflow: hidden;
+    }
+
+    .bed {
+      position: absolute;
+      border: 2px solid #444;
+      background: white;
+      resize: both;
+      overflow: hidden;
+    }
+
+    .plant {
+      position: absolute;
+      font-size: 0.75rem;
+      color: green;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Garden Planner</h1>
+  <div class="toolbar">
+    <button onclick="addBed()">➕ Add Garden Bed</button>
+    <span>Pick a Plant:</span>
+    <button onclick="selectPlant('Lavender')">Lavender</button>
+    <button onclick="selectPlant('Thyme')">Thyme</button>
+    <button onclick="selectPlant('Sage')">Sage</button>
+    <button onclick="selectPlant('Tomato')">Tomato</button>
+    <button onclick="selectPlant('Parsley')">Parsley</button>
+    <button onclick="selectPlant('Chamomile')">Chamomile</button>
+  </div>
+
+  <div class="garden" id="garden"></div>
+
+  <script>
+    const garden = document.getElementById("garden");
+    let selectedPlant = null;
+
+    function selectPlant(name) {
+      selectedPlant = name;
+      document.querySelectorAll('.toolbar button').forEach(btn => btn.style.background = '');
+      [...document.querySelectorAll('.toolbar button')].find(btn => btn.textContent === name).style.background = '#cfc';
+    }
+
+    function addBed() {
+      const bed = document.createElement("div");
+      bed.className = "bed";
+      bed.style.width = "100px";
+      bed.style.height = "100px";
+      bed.style.left = "50px";
+      bed.style.top = "50px";
+      bed.draggable = true;
+
+      let offsetX, offsetY;
+
+      bed.addEventListener("dragstart", (e) => {
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+      });
+
+      garden.addEventListener("dragover", (e) => e.preventDefault());
+
+      garden.addEventListener("drop", (e) => {
+        if (e.target === garden || e.target.classList.contains("bed")) {
+          bed.style.left = `${e.pageX - garden.offsetLeft - offsetX}px`;
+          bed.style.top = `${e.pageY - garden.offsetTop - offsetY}px`;
+        }
+      });
+
+      bed.addEventListener("click", (e) => {
+        if (!selectedPlant) return;
+        const rect = bed.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const plant = document.createElement("div");
+        plant.className = "plant";
+        plant.style.left = `${x}px`;
+        plant.style.top = `${y}px`;
+        plant.textContent = selectedPlant;
+        bed.appendChild(plant);
+      });
+
+      garden.appendChild(bed);
+    }
+  </script>
+</body>
+
+</html>
