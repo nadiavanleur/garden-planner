@@ -125,38 +125,56 @@
       user-select: none;
     }
 
-    .plant .plant-name {
-      font-size: 0.8rem;
-      color: #555;
-      text-align: center;
-      user-select: none;
-    }
-
-    .plant .sowing-date {
-      font-size: 0.7rem;
-      color: #555;
-      text-align: center;
-      margin-top: 4px;
-    }
-
-    .plant .delete-btn {
+    .plant-popup {
       position: absolute;
-      top: 2px;
-      right: 2px;
-      background: rgba(255, 80, 80, 0.8);
-      border: none;
-      color: white;
-      font-size: 0.8rem;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
+      background: white;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       display: none;
-      cursor: pointer;
+      z-index: 100;
+      transform: translate(-50%, -100%);
+      top: -10px;
+      left: 50%;
+    }
+
+    .sidebar {
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 300px;
+      height: 100%;
+      background: #fff;
+      border-left: 1px solid #ccc;
+      box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+      padding: 1rem;
+      overflow-y: auto;
+    }
+
+    .sidebar h2 {
+      margin-top: 0;
+    }
+
+    .plant-info {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background: #f9f9f9;
+    }
+
+    .plant-info button {
+      margin-top: 0.5rem;
+    }
+
+    .plant.highlight {
+      outline: 3px solid #ff0;
       z-index: 10;
     }
 
-    .plant:hover .delete-btn {
-      display: block;
+    .plant-info.highlight {
+      background: #ffffcc;
     }
   </style>
 </head>
@@ -167,6 +185,11 @@
   <div class="toolbar"></div>
 
   <div class="garden" id="garden"></div>
+
+  <div class="sidebar" id="sidebar">
+    <h2>Plant Information</h2>
+    <div id="plantInfoContainer"></div>
+  </div>
 
   <script>
     const plantEmojis = {
@@ -462,53 +485,76 @@
       emoji.title = name;
       div.appendChild(emoji);
 
-      const plantName = document.createElement("div");
-      plantName.className = "plant-name";
-      plantName.textContent = name;
-      div.appendChild(plantName);
-
-      const sowingDateLabel = document.createElement("div");
-      sowingDateLabel.className = "sowing-date";
-      sowingDateLabel.textContent = "Sowing Date: Not Set";
-      div.appendChild(sowingDateLabel);
-
       const sowingDateInput = document.createElement("input");
       sowingDateInput.type = "date";
-      sowingDateInput.onchange = () => {
-        sowingDateLabel.textContent = `Sowing Date: ${sowingDateInput.value}`;
-      };
+      sowingDateInput.style.display = "none"; // Hidden, used for storing data
+      sowingDateInput.onchange = updateSidebar; // Update sidebar on change
       div.appendChild(sowingDateInput);
 
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "delete-btn";
-      deleteBtn.textContent = "🗑️";
-      deleteBtn.onclick = () => div.remove();
-      div.appendChild(deleteBtn);
-
-      let dragging = false;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      div.addEventListener("mousedown", (e) => {
-        dragging = true;
-        offsetX = e.offsetX;
-        offsetY = e.offsetY;
-        e.stopPropagation();
+      div.addEventListener("click", (e) => {
+        e.stopPropagation(); // Prevent event bubbling
+        updateSidebar(); // Update sidebar when a plant is clicked
       });
 
-      document.addEventListener("mouseup", () => dragging = false);
-
-      document.addEventListener("mousemove", (e) => {
-        if (dragging) {
-          const bed = div.parentElement;
-          const rect = bed.getBoundingClientRect();
-          div.style.left = `${e.clientX - rect.left - offsetX}px`;
-          div.style.top = `${e.clientY - rect.top - offsetY}px`;
-        }
-      });
-
+      updateSidebar(); // Update sidebar when a new plant is added
       return div;
     }
+
+    function updateSidebar() {
+      const container = document.getElementById("plantInfoContainer");
+      container.innerHTML = ""; // Clear existing content
+
+      document.querySelectorAll(".plant").forEach((plant, index) => {
+        const name = plant.querySelector("span").title;
+        const sowingDate = plant.querySelector("input[type='date']").value || "Not Set";
+
+        const plantInfo = document.createElement("div");
+        plantInfo.className = "plant-info";
+        plantInfo.dataset.plantIndex = index;
+
+        const nameDiv = document.createElement("div");
+        nameDiv.textContent = `Name: ${name}`;
+        plantInfo.appendChild(nameDiv);
+
+        const sowingDateDiv = document.createElement("div");
+        sowingDateDiv.textContent = `Sowing Date: ${sowingDate}`;
+        plantInfo.appendChild(sowingDateDiv);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.textContent = "Delete Plant";
+        deleteBtn.onclick = () => {
+          plant.remove();
+          updateSidebar(); // Update sidebar after deletion
+        };
+        plantInfo.appendChild(deleteBtn);
+
+        // Add hover effect for sidebar
+        plantInfo.addEventListener("mouseenter", () => {
+          plant.classList.add("highlight");
+        });
+        plantInfo.addEventListener("mouseleave", () => {
+          plant.classList.remove("highlight");
+        });
+
+        container.appendChild(plantInfo);
+      });
+
+      // Add hover effect for garden plants
+      document.querySelectorAll(".plant").forEach((plant, index) => {
+        plant.addEventListener("mouseenter", () => {
+          const correspondingInfo = document.querySelector(`.plant-info[data-plant-index="${index}"]`);
+          if (correspondingInfo) correspondingInfo.classList.add("highlight");
+        });
+        plant.addEventListener("mouseleave", () => {
+          const correspondingInfo = document.querySelector(`.plant-info[data-plant-index="${index}"]`);
+          if (correspondingInfo) correspondingInfo.classList.remove("highlight");
+        });
+      });
+    }
+
+    document.addEventListener("click", () => {
+      updateSidebar(); // Update sidebar when clicking outside
+    });
 
     function snapToGrid(val) {
       console.log("snapToGrid called");
@@ -533,7 +579,7 @@
 
         bed.querySelectorAll(".plant").forEach((plant) => {
           const plantData = {
-            name: plant.querySelector(".plant-name").textContent,
+            name: plant.querySelector(".plant-popup div:first-child").textContent.replace("Name: ", ""),
             left: parseFloat(plant.style.left),
             top: parseFloat(plant.style.top),
             sowingDate: plant.querySelector("input[type='date']").value || null,
@@ -573,7 +619,7 @@
           const plant = createPlantElement(plantData.name, plantData.left, plantData.top);
           if (plantData.sowingDate) {
             const sowingDateInput = plant.querySelector("input[type='date']");
-            const sowingDateLabel = plant.querySelector(".sowing-date");
+            const sowingDateLabel = plant.querySelector(".plant-popup div:nth-child(2)");
             sowingDateInput.value = plantData.sowingDate;
             sowingDateLabel.textContent = `Sowing Date: ${plantData.sowingDate}`;
           }
