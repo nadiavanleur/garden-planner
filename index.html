@@ -34,25 +34,28 @@
 
     .bed {
       position: absolute;
-      border: 2px solid #444;
-      background: white;
+      background: #fff7e6;
+      border: 4px solid #8b5a2b;
+      box-shadow: inset 0 0 5px #ccc;
       resize: both;
       overflow: hidden;
     }
 
     .drag-handle {
-      background: #ccc;
+      background: #8b5a2b;
+      color: white;
       padding: 4px;
       cursor: move;
       font-size: 0.75rem;
       text-align: center;
+      user-select: none;
     }
 
     .plant {
       position: absolute;
       width: 32px;
       height: 32px;
-      cursor: move;
+      cursor: grab;
       transform: translate(-50%, -50%);
     }
 
@@ -66,7 +69,7 @@
 
 <body>
 
-  <h1>Garden Planner</h1>
+  <h1>🌿 Garden Planner</h1>
   <div class="toolbar">
     <button onclick="addBed()">➕ Add Garden Bed</button>
     <span>Pick a Plant:</span>
@@ -83,6 +86,7 @@
   <script>
     const garden = document.getElementById("garden");
     let selectedPlant = null;
+    const cm = 10; // 1 cm = 10 pixels
 
     const plantImages = {
       Lavender: "https://img.icons8.com/emoji/48/lavender.png",
@@ -103,14 +107,14 @@
     function addBed() {
       const bed = document.createElement("div");
       bed.className = "bed";
-      bed.style.width = "100px";
-      bed.style.height = "100px";
+      bed.style.width = `${cm * 60}px`; // 60 cm
+      bed.style.height = `${cm * 60}px`; // 60 cm
       bed.style.left = "50px";
       bed.style.top = "50px";
 
       const handle = document.createElement("div");
       handle.className = "drag-handle";
-      handle.textContent = "Drag Bed";
+      handle.textContent = "🌱 Drag Me";
 
       let isDragging = false;
       let dragOffsetX = 0;
@@ -128,22 +132,37 @@
 
       document.addEventListener("mousemove", (e) => {
         if (isDragging) {
-          bed.style.left = `${e.pageX - garden.offsetLeft - dragOffsetX}px`;
-          bed.style.top = `${e.pageY - garden.offsetTop - dragOffsetY}px`;
+          bed.style.left = `${snapToGrid(e.pageX - garden.offsetLeft - dragOffsetX)}px`;
+          bed.style.top = `${snapToGrid(e.pageY - garden.offsetTop - dragOffsetY)}px`;
         }
       });
 
-      bed.appendChild(handle);
+      // Right-click to remove bed
+      bed.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        if (confirm("Remove this garden bed?")) bed.remove();
+      });
 
+      // Plant placement
       bed.addEventListener("click", (e) => {
-        if (!selectedPlant || e.target.closest(".plant")) return;
+        if (!selectedPlant || e.target.closest(".plant") || e.target.classList.contains("drag-handle")) return;
         const rect = bed.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
+        const x = snapToGrid(e.clientX - rect.left);
+        const y = snapToGrid(e.clientY - rect.top);
         const plant = createPlantElement(selectedPlant, x, y);
         bed.appendChild(plant);
       });
 
+      // Resize snap
+      new ResizeObserver(entries => {
+        for (const entry of entries) {
+          const style = entry.target.style;
+          style.width = `${snapToGrid(parseInt(style.width))}px`;
+          style.height = `${snapToGrid(parseInt(style.height))}px`;
+        }
+      }).observe(bed);
+
+      bed.appendChild(handle);
       garden.appendChild(bed);
     }
 
@@ -174,8 +193,8 @@
         if (dragging) {
           const bed = div.parentElement;
           const rect = bed.getBoundingClientRect();
-          div.style.left = `${e.clientX - rect.left - offsetX}px`;
-          div.style.top = `${e.clientY - rect.top - offsetY}px`;
+          div.style.left = `${snapToGrid(e.clientX - rect.left - offsetX)}px`;
+          div.style.top = `${snapToGrid(e.clientY - rect.top - offsetY)}px`;
         }
       });
 
@@ -184,13 +203,15 @@
       });
 
       div.addEventListener("dblclick", (e) => {
-        if (confirm(`Remove ${name}?`)) {
-          div.remove();
-        }
+        if (confirm(`Remove ${name}?`)) div.remove();
         e.stopPropagation();
       });
 
       return div;
+    }
+
+    function snapToGrid(val) {
+      return Math.round(val / cm / 10) * cm * 10;
     }
   </script>
 
